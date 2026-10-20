@@ -6,13 +6,6 @@ from datetime import datetime
 # 1. Page Configuration
 st.set_page_config(page_title="Shani Industrial", layout="wide")
 
-# Helper function to convert dates safely
-def parse_date(date_str):
-    try:
-        return datetime.strptime(str(date_str), "%Y-%m-%d")
-    except:
-        return datetime.today()
-
 # 2. Secure Login System
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
@@ -68,7 +61,6 @@ else:
     if choice == "📊 Executive Dashboard":
         st.subheader("📈 Real-Time Business Performance Dashboard")
         
-        # Time Filters
         filter_type = st.radio("Filter Dashboard By:", ["Cumulative (Total)", "Monthly View", "Yearly View"], horizontal=True)
         
         selected_month = None
@@ -81,7 +73,6 @@ else:
             all_years = sorted(list(set(df_raw["Year"].tolist() + df_prod["Year"].tolist() + df_sales["Year"].tolist()))) if not df_raw.empty or not df_sales.empty else [datetime.today().strftime('%Y')]
             selected_year = st.selectbox("Select Year (YYYY):", all_years)
 
-        # Apply Filters to temporary DataFrames
         f_raw = df_raw.copy()
         f_prod = df_prod.copy()
         f_sales = df_sales.copy()
@@ -98,11 +89,9 @@ else:
             f_sales = f_sales[f_sales["Year"] == selected_year] if not f_sales.empty else f_sales
             f_exp = f_exp[f_exp["Year"] == selected_year] if not f_exp.empty else f_exp
 
-        # Calculations
         raw_purchased_amt = f_raw[f_raw["Type"] == "PURCHASE"]["Total Amount"].sum() if not f_raw.empty else 0.0
         raw_consumed_amt = f_raw[f_raw["Type"] == "CONSUME"]["Total Amount"].sum() if not f_raw.empty else 0.0
         
-        # Calculate Current Available Raw Material Stock Value (Always Live/Cumulative)
         net_raw_val = 0.0
         if not df_raw.empty:
             for mat in df_raw["Material ID"].unique():
@@ -113,14 +102,11 @@ else:
                 avg_rate = m_data[m_data["Type"] == "PURCHASE"]["Rate"].mean() if not m_data[m_data["Type"] == "PURCHASE"].empty else 0
                 net_raw_val += (current_qty * avg_rate)
 
-        # Production stats
         total_prod_qty = f_prod[f_prod["Type"] == "PRODUCTION"]["Quantity"].sum() if not f_prod.empty else 0
         total_prod_cost = f_prod[f_prod["Type"] == "PRODUCTION"]["Batch Cost"].sum() if not f_prod.empty else 0.0
         
-        # Sales Stats
         total_sales_revenue = f_sales["Total Amount"].sum() if not f_sales.empty else 0.0
         
-        # Finished Goods Available Live Inventory Value (Always Live)
         net_fg_val = 0.0
         if not df_prod.empty:
             for pid in df_prod["Product ID"].unique():
@@ -131,22 +117,21 @@ else:
                 latest_price = p_data["Selling Price"].iloc[-1] if not p_data.empty else 0
                 net_fg_val += (current_fg_stock * latest_price)
 
-        # ---------------- KPI METRICS DISPLAY ----------------
         st.write("### 📦 Raw Materials Summary")
         kpi1, kpi2, kpi3 = st.columns(3)
         kpi1.metric("Total Raw Materials Purchased Amount", f"{raw_purchased_amt:,.2f} MT/USD")
         kpi2.metric("Total Raw Materials Consumed (Used) Amount", f"{raw_consumed_amt:,.2f} MT/USD")
-        kpi3.metric("CURRENT Live Raw Material Stock Value", f"{net_raw_val:,.2f} MT/USD", help="Current warehouse valuation")
+        kpi3.metric("CURRENT Live Raw Material Stock Value", f"{net_raw_val:,.2f} MT/USD")
 
         st.write("### 🧼 Manufacturing & Production Summary")
         kpi4, kpi5 = st.columns(2)
-        kpi4.metric("Total Production Output (Boxes/Pcs)", f"{total_prod_qty:,} Units")
-        kpi5.metric("Total Production Cost (Input Cost Value)", f"{total_prod_cost:,.2f} MT/USD")
+        kpi4.metric("Total Production Output", f"{total_prod_qty:,} Units")
+        kpi5.metric("Total Production Cost", f"{total_prod_cost:,.2f} MT/USD")
 
-        st.write("### 💰 Sales Revenue & Finished Goods Inventory Valuation")
+        st.write("### 💰 Sales & Inventory Valuation")
         kpi6, kpi7 = st.columns(2)
         kpi6.metric("Total Sales Revenue Amount", f"{total_sales_revenue:,.2f} MT/USD")
-        kpi7.metric("CURRENT Finished Goods Stock Value", f"{net_fg_val:,.2f} MT/USD", help="Market value of unsold ready products")
+        kpi7.metric("CURRENT Finished Goods Stock Value", f"{net_fg_val:,.2f} MT/USD")
 
     # ==========================================
     # 📦 PAGE 1: RAW MATERIALS MANAGEMENT
@@ -159,9 +144,9 @@ else:
             with st.form("raw_purchase_form", clear_on_submit=True):
                 st.write("### ➕ Purchase Raw Material (Stock In)")
                 r_date = st.date_input("Purchase Date", datetime.today())
-                r_id = st.text_input("Material ID (e.g., MAT-OIL, MAT-CAUSTIC)")
+                r_id = st.text_input("Material ID (e.g., MAT-OIL)")
                 r_name = st.text_input("Material Name")
-                r_qty = st.number_input("Quantity Purchased (KG/Liters)", min_value=0.0)
+                r_qty = st.number_input("Quantity Purchased", min_value=0.0)
                 r_rate = st.number_input("Rate Per Unit", min_value=0.0)
                 r_supp = st.text_input("Supplier Details")
                 
@@ -181,6 +166,15 @@ else:
                 if not df_raw.empty:
                     mat_list = df_raw[df_raw["Type"] == "PURCHASE"]["Material ID"].unique().tolist()
                     c_id = st.selectbox("Select Material ID", mat_list)
-                    c_qty = st.number_input("Quantity to Issue/Consume", min_value=0.0)
+                    c_qty = st.number_input("Quantity to Consume", min_value=0.0)
                     
                     if st.form_submit_button("Consume / Reduce Stock"):
+                        m_entries = df_raw[df_raw["Material ID"] == c_id]
+                        p_tot = m_entries[m_entries["Type"] == "PURCHASE"]["Quantity"].sum()
+                        c_tot = m_entries[m_entries["Type"] == "CONSUME"]["Quantity"].sum()
+                        avail = p_tot - c_tot
+                        
+                        if avail >= c_qty:
+                            avg_rate = m_entries[m_entries["Type"] == "PURCHASE"]["Rate"].mean()
+                            tot_c_amt = c_qty * avg_rate
+                            m_name_string = str(m_entries["Material Name"].iloc[0])
