@@ -119,19 +119,19 @@ else:
 
         st.write("### 📦 Raw Materials Summary")
         kpi1, kpi2, kpi3 = st.columns(3)
-        kpi1.metric("Total Raw Materials Purchased Amount", f"{raw_purchased_amt:,.2f} MT/USD")
-        kpi2.metric("Total Raw Materials Consumed (Used) Amount", f"{raw_consumed_amt:,.2f} MT/USD")
-        kpi3.metric("CURRENT Live Raw Material Stock Value", f"{net_raw_val:,.2f} MT/USD")
+        kpi1.metric("Total Raw Materials Purchased Amount", f"{raw_purchased_amt:,.2f} MT")
+        kpi2.metric("Total Raw Materials Consumed (Used) Amount", f"{raw_consumed_amt:,.2f} MT")
+        kpi3.metric("CURRENT Live Raw Material Stock Value", f"{net_raw_val:,.2f} MT")
 
         st.write("### 🧼 Manufacturing & Production Summary")
         kpi4, kpi5 = st.columns(2)
         kpi4.metric("Total Production Output", f"{total_prod_qty:,} Units")
-        kpi5.metric("Total Production Cost", f"{total_prod_cost:,.2f} MT/USD")
+        kpi5.metric("Total Production Cost", f"{total_prod_cost:,.2f} MT")
 
         st.write("### 💰 Sales & Inventory Valuation")
         kpi6, kpi7 = st.columns(2)
-        kpi6.metric("Total Sales Revenue Amount", f"{total_sales_revenue:,.2f} MT/USD")
-        kpi7.metric("CURRENT Finished Goods Stock Value", f"{net_fg_val:,.2f} MT/USD")
+        kpi6.metric("Total Sales Revenue Amount", f"{total_sales_revenue:,.2f} MT")
+        kpi7.metric("CURRENT Finished Goods Stock Value", f"{net_fg_val:,.2f} MT")
 
     # ==========================================
     # 📦 PAGE 1: RAW MATERIALS MANAGEMENT
