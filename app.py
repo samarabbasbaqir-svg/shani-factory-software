@@ -30,7 +30,7 @@ else:
     st.title(" SHANI INDUSTRIAL LIMITADA")
     
     # Sidebar Navigation - Ab isme saare naye option hain
-    menu = ["📦 Raw Materials Stock", "🧼 Finished Goods Stock", "💰 Sales & Invoices", "📉 Factory Expenses", "🚪 Logout"]
+    menu = ["📦 Raw Materials ", "🧼 Production", "💰 Sales & Invoices", "📉 Factory Expenses", "🚪 Logout"]
     choice = st.sidebar.selectbox("Factory Menu", menu)
     
     if choice == "🚪 Logout":
