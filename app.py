@@ -15,7 +15,7 @@ def login_page():
     password = st.text_input("Password", type="password")
     if st.button("Login"):
         # You can change your username and password here
-        if username == "admin" and password == "maputo2026":
+        if username == "shaniindustrial" and password == "shani1514":
             st.session_state['logged_in'] = True
             st.success("Login Successful!")
             st.rerun()
