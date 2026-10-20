@@ -3,7 +3,7 @@ import pandas as pd
 import os
 
 # 1. Page Configuration
-st.set_page_config(page_title="Shani Industrial Software", layout="wide")
+st.set_page_config(page_title="SHANI INDUSTRIAL LIMITADA", layout="wide")
 
 # 2. Secure Login System
 if 'logged_in' not in st.session_state:
@@ -27,7 +27,7 @@ if not st.session_state['logged_in']:
     login_page()
 else:
     # 3. Main Application after Login
-    st.title("🏭 Shani Industrial Software, Maputo")
+    st.title(" SHANI INDUSTRIAL LIMITADA")
     
     # Sidebar Navigation
     menu = ["📦 Raw Materials", "🧼 Finished Goods", "💰 Sales & Invoices", "🚪 Logout"]
