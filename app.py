@@ -38,13 +38,13 @@ else:
         st.rerun()
         
     # --- PAGE 1: RAW MATERIALS (INVENTORY) ---
-    elif choice == "📦 Raw Materials Stock":
+    elif choice == "📦 Raw Materials ":
         st.subheader("Raw Materials Inventory & Current Stock")
         file_raw = "raw_materials.csv"
         df_raw = pd.read_csv(file_raw) if os.path.exists(file_raw) else pd.DataFrame(columns=["Material ID", "Material Name", "Current Stock (KG/Liters)", "Supplier"])
         
         with st.form("raw_form", clear_on_submit=True):
-            st.write("### Add / Update Raw Material Stock")
+            st.write("### Add / Update Raw Material ")
             m_id = st.text_input("Material ID")
             m_name = st.text_input("Material Name")
             m_stock = st.number_input("Quantity", min_value=0.0)
@@ -57,13 +57,13 @@ else:
                     st.success(f"{m_name} Stock Saved!")
                     st.rerun()
         
-        st.write("### 📊 Live Raw Material Stock List")
+        st.write("### 📊 Live Raw Material List")
         st.dataframe(df_raw, use_container_width=True)
 
     # --- PAGE 2: FINISHED GOODS (CURRENT STOCK) ---
-    elif choice == "🧼 Finished Goods Stock":
+    elif choice == "🧼 Production":
         st.subheader("Finished Products Inventory (Soap & Oil Ready Stock)")
-        file_prod = "finished_goods.csv"
+        file_prod = "Production.csv"
         df_prod = pd.read_csv(file_prod) if os.path.exists(file_prod) else pd.DataFrame(columns=["Product ID", "Product Name", "Available Stock (Boxes/Pcs)", "Price per Unit"])
         
         with st.form("prod_form", clear_on_submit=True):
@@ -71,7 +71,7 @@ else:
             p_id = st.text_input("Product ID")
             p_name = st.text_input("Product Name")
             p_stock = st.number_input("Current Available Stock", min_value=0)
-            p_price = st.number_input("Selling Price (Metical/USD)", min_value=0.0)
+            p_price = st.number_input("Selling Price (Meticais)", min_value=0.0)
             if st.form_submit_button("Save to Ready Stock"):
                 if p_id and p_name:
                     new_row = pd.DataFrame([[p_id, p_name, p_stock, p_price]], columns=df_prod.columns)
@@ -80,7 +80,7 @@ else:
                     st.success(f"{p_name} Stock Updated!")
                     st.rerun()
                     
-        st.write("### 📊 Live Finished Goods Stock List")
+        st.write("### 📊 Live Prodution List")
         st.dataframe(df_prod, use_container_width=True)
 
     # --- PAGE 3: SALES & INVOICES ---
