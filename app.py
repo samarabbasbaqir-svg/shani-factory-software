@@ -22,7 +22,7 @@ def login_page():
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
     if st.button("Login"):
-        if username == "shani" and password == "shani1514":
+        if username == "admin" and password == "maputo2026":
             st.session_state['logged_in'] = True
             st.success("Login Successful!")
             st.rerun()
