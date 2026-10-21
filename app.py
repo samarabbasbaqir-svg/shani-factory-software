@@ -15,7 +15,7 @@ def login_page():
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
     if st.button("Login"):
-        if username == "shani" and password == "shani1514":
+        if username == "admin" and password == "maputo2026":
             st.session_state['logged_in'] = True
             st.success("Login Successful!")
             st.rerun()
@@ -42,18 +42,30 @@ else:
     file_sales = "sales_ledger.csv"
     file_exp = "expenses_ledger.csv"
 
-    # Load DataFrames safely
-    df_raw = pd.read_csv(file_raw) if os.path.exists(file_raw) else pd.DataFrame(columns=["Date", "Material ID", "Material Name", "Type", "Quantity", "Rate", "Total Amount", "Supplier"])
-    df_prod = pd.read_csv(file_prod) if os.path.exists(file_prod) else pd.DataFrame(columns=["Date", "Product ID", "Product Name", "Type", "Quantity", "Batch Cost", "Selling Price"])
-    df_sales = pd.read_csv(file_sales) if os.path.exists(file_sales) else pd.DataFrame(columns=["Date", "Invoice No", "Customer Name", "Product ID", "Product Name", "Quantity Sold", "Price Per Unit", "Total Amount"])
-    df_exp = pd.read_csv(file_exp) if os.path.exists(file_exp) else pd.DataFrame(columns=["Date", "Category", "Description", "Amount Paid"])
+    # Columns definitions
+    cols_raw = ["Date", "Material ID", "Material Name", "Type", "Quantity", "Rate", "Total Amount", "Supplier", "YearMonth", "Year"]
+    cols_prod = ["Date", "Product ID", "Product Name", "Type", "Quantity", "Batch Cost", "Selling Price", "YearMonth", "Year"]
+    cols_sales = ["Date", "Invoice No", "Customer Name", "Product ID", "Product Name", "Quantity Sold", "Price Per Unit", "Total Amount", "YearMonth", "Year"]
+    cols_exp = ["Date", "Category", "Description", "Amount Paid", "YearMonth", "Year"]
 
-    # Ensure Date format compliance
-    for df in [df_raw, df_prod, df_sales, df_exp]:
+    # Load DataFrames safely
+    df_raw = pd.read_csv(file_raw) if os.path.exists(file_raw) else pd.DataFrame(columns=cols_raw)
+    df_prod = pd.read_csv(file_prod) if os.path.exists(file_prod) else pd.DataFrame(columns=cols_prod)
+    df_sales = pd.read_csv(file_sales) if os.path.exists(file_sales) else pd.DataFrame(columns=cols_sales)
+    df_exp = pd.read_csv(file_exp) if os.path.exists(file_exp) else pd.DataFrame(columns=cols_exp)
+
+    # Helper function to inject YearMonth and Year safely to data rows
+    def sync_date_features(df):
         if not df.empty:
             df["Date"] = df["Date"].astype(str)
-            df["YearMonth"] = df["Date"].apply(lambda x: x[:7]) # YYYY-MM
-            df["Year"] = df["Date"].apply(lambda x: x[:4]) # YYYY
+            df["YearMonth"] = df["Date"].apply(lambda x: str(x)[:7]) # YYYY-MM
+            df["Year"] = df["Date"].apply(lambda x: str(x)[:4]) # YYYY
+        return df
+
+    df_raw = sync_date_features(df_raw)
+    df_prod = sync_date_features(df_prod)
+    df_sales = sync_date_features(df_sales)
+    df_exp = sync_date_features(df_exp)
 
     # ==========================================
     # 📊 PAGE 0: EXECUTIVE ANALYTICS DASHBOARD
@@ -66,57 +78,57 @@ else:
         selected_month = None
         selected_year = None
         
+        # Safe extraction of unique months/years
+        list_m = sorted(list(set(df_raw["YearMonth"].tolist() + df_prod["YearMonth"].tolist() + df_sales["YearMonth"].tolist() + df_exp["YearMonth"].tolist())))
+        list_y = sorted(list(set(df_raw["Year"].tolist() + df_prod["Year"].tolist() + df_sales["Year"].tolist() + df_exp["Year"].tolist())))
+        
         if filter_type == "Monthly View":
-            all_months = sorted(list(set(df_raw["YearMonth"].tolist() + df_prod["YearMonth"].tolist() + df_sales["YearMonth"].tolist()))) if not df_raw.empty or not df_sales.empty else [datetime.today().strftime('%Y-%m')]
-            selected_month = st.selectbox("Select Month (YYYY-MM):", all_months)
+            selected_month = st.selectbox("Select Month (YYYY-MM):", list_m if list_m else [datetime.today().strftime('%Y-%m')])
         elif filter_type == "Yearly View":
-            all_years = sorted(list(set(df_raw["Year"].tolist() + df_prod["Year"].tolist() + df_sales["Year"].tolist()))) if not df_raw.empty or not df_sales.empty else [datetime.today().strftime('%Y')]
-            selected_year = st.selectbox("Select Year (YYYY):", all_years)
+            selected_year = st.selectbox("Select Year (YYYY):", list_y if list_y else [datetime.today().strftime('%Y')])
 
-        f_raw = df_raw.copy()
-        f_prod = df_prod.copy()
-        f_sales = df_sales.copy()
-        f_exp = df_exp.copy()
+        f_raw, f_prod, f_sales, f_exp = df_raw.copy(), df_prod.copy(), df_sales.copy(), df_exp.copy()
 
-        if filter_type == "Monthly View":
+        if filter_type == "Monthly View" and selected_month:
             f_raw = f_raw[f_raw["YearMonth"] == selected_month] if not f_raw.empty else f_raw
             f_prod = f_prod[f_prod["YearMonth"] == selected_month] if not f_prod.empty else f_prod
             f_sales = f_sales[f_sales["YearMonth"] == selected_month] if not f_sales.empty else f_sales
             f_exp = f_exp[f_exp["YearMonth"] == selected_month] if not f_exp.empty else f_exp
-        elif filter_type == "Yearly View":
+        elif filter_type == "Yearly View" and selected_year:
             f_raw = f_raw[f_raw["Year"] == selected_year] if not f_raw.empty else f_raw
             f_prod = f_prod[f_prod["Year"] == selected_year] if not f_prod.empty else f_prod
             f_sales = f_sales[f_sales["Year"] == selected_year] if not f_sales.empty else f_sales
             f_exp = f_exp[f_exp["Year"] == selected_year] if not f_exp.empty else f_exp
 
-        raw_purchased_amt = f_raw[f_raw["Type"] == "PURCHASE"]["Total Amount"].sum() if not f_raw.empty else 0.0
-        raw_consumed_amt = f_raw[f_raw["Type"] == "CONSUME"]["Total Amount"].sum() if not f_raw.empty else 0.0
+        # Dashboard Logic Calculations
+        raw_purchased_amt = pd.to_numeric(f_raw[f_raw["Type"] == "PURCHASE"]["Total Amount"], errors='coerce').sum() if not f_raw.empty else 0.0
+        raw_consumed_amt = pd.to_numeric(f_raw[f_raw["Type"] == "CONSUME"]["Total Amount"], errors='coerce').sum() if not f_raw.empty else 0.0
         
         net_raw_val = 0.0
         if not df_raw.empty:
             for mat in df_raw["Material ID"].unique():
                 m_data = df_raw[df_raw["Material ID"] == mat]
-                p_qty = m_data[m_data["Type"] == "PURCHASE"]["Quantity"].sum()
-                c_qty = m_data[m_data["Type"] == "CONSUME"]["Quantity"].sum()
+                p_qty = pd.to_numeric(m_data[m_data["Type"] == "PURCHASE"]["Quantity"], errors='coerce').sum()
+                c_qty = pd.to_numeric(m_data[m_data["Type"] == "CONSUME"]["Quantity"], errors='coerce').sum()
                 current_qty = p_qty - c_qty
-                avg_rate = m_data[m_data["Type"] == "PURCHASE"]["Rate"].mean() if not m_data[m_data["Type"] == "PURCHASE"].empty else 0
+                avg_rate = pd.to_numeric(m_data[m_data["Type"] == "PURCHASE"]["Rate"], errors='coerce').mean() if not m_data[m_data["Type"] == "PURCHASE"].empty else 0.0
                 net_raw_val += (current_qty * avg_rate)
 
-        total_prod_qty = f_prod[f_prod["Type"] == "PRODUCTION"]["Quantity"].sum() if not f_prod.empty else 0
-        total_prod_cost = f_prod[f_prod["Type"] == "PRODUCTION"]["Batch Cost"].sum() if not f_prod.empty else 0.0
-        
-        total_sales_revenue = f_sales["Total Amount"].sum() if not f_sales.empty else 0.0
+        total_prod_qty = pd.to_numeric(f_prod[f_prod["Type"] == "PRODUCTION"]["Quantity"], errors='coerce').sum() if not f_prod.empty else 0
+        total_prod_cost = pd.to_numeric(f_prod[f_prod["Type"] == "PRODUCTION"]["Batch Cost"], errors='coerce').sum() if not f_prod.empty else 0.0
+        total_sales_revenue = pd.to_numeric(f_sales["Total Amount"], errors='coerce').sum() if not f_sales.empty else 0.0
         
         net_fg_val = 0.0
         if not df_prod.empty:
             for pid in df_prod["Product ID"].unique():
                 p_data = df_prod[df_prod["Product ID"] == pid]
-                prod_qty = p_data[p_data["Type"] == "PRODUCTION"]["Quantity"].sum()
-                sold_qty = df_sales[df_sales["Product ID"] == pid]["Quantity Sold"].sum() if not df_sales.empty else 0
+                prod_qty = pd.to_numeric(p_data[p_data["Type"] == "PRODUCTION"]["Quantity"], errors='coerce').sum()
+                sold_qty = pd.to_numeric(df_sales[df_sales["Product ID"] == pid]["Quantity Sold"], errors='coerce').sum() if not df_sales.empty else 0
                 current_fg_stock = prod_qty - sold_qty
-                latest_price = p_data["Selling Price"].iloc[-1] if not p_data.empty else 0
+                latest_price = pd.to_numeric(p_data["Selling Price"], errors='coerce').iloc[-1] if not p_data.empty else 0.0
                 net_fg_val += (current_fg_stock * latest_price)
 
+        # UI Boxes
         st.write("### 📦 Raw Materials Summary")
         kpi1, kpi2, kpi3 = st.columns(3)
         kpi1.metric("Total Raw Materials Purchased Amount", f"{raw_purchased_amt:,.2f} MT")
@@ -138,8 +150,8 @@ else:
     # ==========================================
     elif choice == "📦 Raw Materials Management":
         st.subheader("Raw Material Inventory Ledger")
-        
         col1, col2 = st.columns(2)
+        
         with col1:
             with st.form("raw_purchase_form", clear_on_submit=True):
                 st.write("### ➕ Purchase Raw Material (Stock In)")
@@ -152,8 +164,11 @@ else:
                 
                 if st.form_submit_button("Log Purchase / Add Stock"):
                     if r_id and r_name and r_qty > 0:
+                        dt_str = str(r_date)
                         tot_amt = r_qty * r_rate
-                        new_row = pd.DataFrame([[str(r_date), r_id, r_name, "PURCHASE", r_qty, r_rate, tot_amt, r_supp]], columns=df_raw.columns[:8])
+                        ym = dt_str[:7]
+                        y = dt_str[:4]
+                        new_row = pd.DataFrame([[dt_str, r_id, r_name, "PURCHASE", r_qty, r_rate, tot_amt, r_supp, ym, y]], columns=cols_raw)
                         df_raw = pd.concat([df_raw, new_row], ignore_index=True)
                         df_raw.to_csv(file_raw, index=False)
                         st.success("Purchase Logged Successfully!")
@@ -165,16 +180,3 @@ else:
                 c_date = st.date_input("Issue Date", datetime.today())
                 if not df_raw.empty:
                     mat_list = df_raw[df_raw["Type"] == "PURCHASE"]["Material ID"].unique().tolist()
-                    c_id = st.selectbox("Select Material ID", mat_list)
-                    c_qty = st.number_input("Quantity to Consume", min_value=0.0)
-                    
-                    if st.form_submit_button("Consume / Reduce Stock"):
-                        m_entries = df_raw[df_raw["Material ID"] == c_id]
-                        p_tot = m_entries[m_entries["Type"] == "PURCHASE"]["Quantity"].sum()
-                        c_tot = m_entries[m_entries["Type"] == "CONSUME"]["Quantity"].sum()
-                        avail = p_tot - c_tot
-                        
-                        if avail >= c_qty:
-                            avg_rate = m_entries[m_entries["Type"] == "PURCHASE"]["Rate"].mean()
-                            tot_c_amt = c_qty * avg_rate
-                            m_name_string = str(m_entries["Material Name"].iloc[0])
