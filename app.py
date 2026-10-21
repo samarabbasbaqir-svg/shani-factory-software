@@ -80,7 +80,6 @@ else:
         selected_month = None
         selected_year = None
         
-        # Safe extraction of unique months/years
         list_m = sorted(list(set(df_raw["YearMonth"].dropna().tolist() + df_prod["YearMonth"].dropna().tolist() + df_sales["YearMonth"].dropna().tolist() + df_exp["YearMonth"].dropna().tolist())))
         list_y = sorted(list(set(df_raw["Year"].dropna().tolist() + df_prod["Year"].dropna().tolist() + df_sales["Year"].dropna().tolist() + df_exp["Year"].dropna().tolist())))
         
@@ -102,7 +101,6 @@ else:
             f_sales = f_sales[f_sales["Year"] == selected_year] if not f_sales.empty else f_sales
             f_exp = f_exp[f_exp["Year"] == selected_year] if not f_exp.empty else f_exp
 
-        # Dashboard Logic Calculations
         raw_purchased_amt = pd.to_numeric(f_raw[f_raw["Type"] == "PURCHASE"]["Total Amount"], errors='coerce').sum() if not f_raw.empty else 0.0
         raw_consumed_amt = pd.to_numeric(f_raw[f_raw["Type"] == "CONSUME"]["Total Amount"], errors='coerce').sum() if not f_raw.empty else 0.0
         
@@ -130,7 +128,6 @@ else:
                 latest_price = pd.to_numeric(p_data["Selling Price"], errors='coerce').iloc[-1] if not p_data.empty else 0.0
                 net_fg_val += (current_fg_stock * latest_price)
 
-        # UI Boxes
         st.write("### 📦 Raw Materials Summary")
         kpi1, kpi2, kpi3 = st.columns(3)
         kpi1.metric("Total Raw Materials Purchased Amount", f"{raw_purchased_amt:,.2f} MT")
@@ -152,28 +149,31 @@ else:
     # ==========================================
     elif choice == "📦 Raw Materials Management":
         st.subheader("Raw Material Inventory Ledger")
-        col1, col2 = st.columns(2)
         
-        with col1:
-            with st.form("raw_purchase_form", clear_on_submit=True):
-                st.write("### ➕ Purchase Raw Material (Stock In)")
-                r_date = st.date_input("Purchase Date", datetime.today())
-                r_id = st.text_input("Material ID (e.g., MAT-OIL)")
-                r_name = st.text_input("Material Name")
-                r_qty = st.number_input("Quantity Purchased", min_value=0.0)
-                r_rate = st.number_input("Rate Per Unit", min_value=0.0)
-                r_supp = st.text_input("Supplier Details")
-                
-                if st.form_submit_button("Log Purchase / Add Stock"):
-                    if r_id and r_name and r_qty > 0:
-                        dt_str = str(r_date)
-                        tot_amt = r_qty * r_rate
-                        ym = dt_str[:7]
-                        y = dt_str[:4]
-                        new_row = pd.DataFrame([[dt_str, r_id, r_name, "PURCHASE", r_qty, r_rate, tot_amt, r_supp, ym, y]], columns=cols_raw)
-                        df_raw = pd.concat([df_raw, new_row], ignore_index=True)
-                        df_raw.to_csv(file_raw, index=False)
-                        st.success("Purchase Logged Successfully!")
-                        st.rerun()
+        # Section 1: Purchase Form
+        with st.form("raw_purchase_form", clear_on_submit=True):
+            st.write("### ➕ Purchase Raw Material (Stock In)")
+            r_date = st.date_input("Purchase Date", datetime.today())
+            r_id = st.text_input("Material ID (e.g., MAT-OIL)")
+            r_name = st.text_input("Material Name")
+            r_qty = st.number_input("Quantity Purchased", min_value=0.0)
+            r_rate = st.number_input("Rate Per Unit", min_value=0.0)
+            r_supp = st.text_input("Supplier Details")
+            
+            if st.form_submit_button("Log Purchase / Add Stock"):
+                if r_id and r_name and r_qty > 0:
+                    dt_str = str(r_date)
+                    tot_amt = r_qty * r_rate
+                    ym = dt_str[:7]
+                    y = dt_str[:4]
+                    new_row = pd.DataFrame([[dt_str, r_id, r_name, "PURCHASE", r_qty, r_rate, tot_amt, r_supp, ym, y]], columns=cols_raw)
+                    df_raw = pd.concat([df_raw, new_row], ignore_index=True)
+                    df_raw.to_csv(file_raw, index=False)
+                    st.success("Purchase Logged Successfully!")
+                    st.rerun()
 
-        with col2:
+        st.write("---")
+
+        # Section 2: Consume Form
+        with st.form("raw_consume_form", clear_on_submit=True):
+            st.write("### ➖ Issue Material for Production (Stock Out)")
