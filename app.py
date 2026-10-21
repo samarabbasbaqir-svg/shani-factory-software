@@ -49,23 +49,25 @@ else:
     cols_exp = ["Date", "Category", "Description", "Amount Paid", "YearMonth", "Year"]
 
     # Load DataFrames safely
-    df_raw = pd.read_csv(file_raw) if os.path.exists(file_raw) else pd.DataFrame(columns=cols_raw)
-    df_prod = pd.read_csv(file_prod) if os.path.exists(file_prod) else pd.DataFrame(columns=cols_prod)
-    df_sales = pd.read_csv(file_sales) if os.path.exists(file_sales) else pd.DataFrame(columns=cols_sales)
-    df_exp = pd.read_csv(file_exp) if os.path.exists(file_exp) else pd.DataFrame(columns=cols_exp)
+    df_raw = pd.read_csv(file_raw) if os.path.exists(file_raw) and os.path.getsize(file_raw) > 0 else pd.DataFrame(columns=cols_raw)
+    df_prod = pd.read_csv(file_prod) if os.path.exists(file_prod) and os.path.getsize(file_prod) > 0 else pd.DataFrame(columns=cols_prod)
+    df_sales = pd.read_csv(file_sales) if os.path.exists(file_sales) and os.path.getsize(file_sales) > 0 else pd.DataFrame(columns=cols_sales)
+    df_exp = pd.read_csv(file_exp) if os.path.exists(file_exp) and os.path.getsize(file_exp) > 0 else pd.DataFrame(columns=cols_exp)
 
     # Helper function to inject YearMonth and Year safely to data rows
-    def sync_date_features(df):
-        if not df.empty:
+    def sync_date_features(df, required_cols):
+        if df.empty or len(df.columns) < len(required_cols):
+            df = pd.DataFrame(columns=required_cols)
+        else:
             df["Date"] = df["Date"].astype(str)
-            df["YearMonth"] = df["Date"].apply(lambda x: str(x)[:7]) # YYYY-MM
-            df["Year"] = df["Date"].apply(lambda x: str(x)[:4]) # YYYY
+            df["YearMonth"] = df["Date"].apply(lambda x: str(x)[:7])
+            df["Year"] = df["Date"].apply(lambda x: str(x)[:4])
         return df
 
-    df_raw = sync_date_features(df_raw)
-    df_prod = sync_date_features(df_prod)
-    df_sales = sync_date_features(df_sales)
-    df_exp = sync_date_features(df_exp)
+    df_raw = sync_date_features(df_raw, cols_raw)
+    df_prod = sync_date_features(df_prod, cols_prod)
+    df_sales = sync_date_features(df_sales, cols_sales)
+    df_exp = sync_date_features(df_exp, cols_exp)
 
     # ==========================================
     # 📊 PAGE 0: EXECUTIVE ANALYTICS DASHBOARD
@@ -79,8 +81,8 @@ else:
         selected_year = None
         
         # Safe extraction of unique months/years
-        list_m = sorted(list(set(df_raw["YearMonth"].tolist() + df_prod["YearMonth"].tolist() + df_sales["YearMonth"].tolist() + df_exp["YearMonth"].tolist())))
-        list_y = sorted(list(set(df_raw["Year"].tolist() + df_prod["Year"].tolist() + df_sales["Year"].tolist() + df_exp["Year"].tolist())))
+        list_m = sorted(list(set(df_raw["YearMonth"].dropna().tolist() + df_prod["YearMonth"].dropna().tolist() + df_sales["YearMonth"].dropna().tolist() + df_exp["YearMonth"].dropna().tolist())))
+        list_y = sorted(list(set(df_raw["Year"].dropna().tolist() + df_prod["Year"].dropna().tolist() + df_sales["Year"].dropna().tolist() + df_exp["Year"].dropna().tolist())))
         
         if filter_type == "Monthly View":
             selected_month = st.selectbox("Select Month (YYYY-MM):", list_m if list_m else [datetime.today().strftime('%Y-%m')])
@@ -106,7 +108,7 @@ else:
         
         net_raw_val = 0.0
         if not df_raw.empty:
-            for mat in df_raw["Material ID"].unique():
+            for mat in df_raw["Material ID"].dropna().unique():
                 m_data = df_raw[df_raw["Material ID"] == mat]
                 p_qty = pd.to_numeric(m_data[m_data["Type"] == "PURCHASE"]["Quantity"], errors='coerce').sum()
                 c_qty = pd.to_numeric(m_data[m_data["Type"] == "CONSUME"]["Quantity"], errors='coerce').sum()
@@ -120,7 +122,7 @@ else:
         
         net_fg_val = 0.0
         if not df_prod.empty:
-            for pid in df_prod["Product ID"].unique():
+            for pid in df_prod["Product ID"].dropna().unique():
                 p_data = df_prod[df_prod["Product ID"] == pid]
                 prod_qty = pd.to_numeric(p_data[p_data["Type"] == "PRODUCTION"]["Quantity"], errors='coerce').sum()
                 sold_qty = pd.to_numeric(df_sales[df_sales["Product ID"] == pid]["Quantity Sold"], errors='coerce').sum() if not df_sales.empty else 0
@@ -175,8 +177,3 @@ else:
                         st.rerun()
 
         with col2:
-            with st.form("raw_consume_form", clear_on_submit=True):
-                st.write("### ➖ Issue Material for Production (Stock Out)")
-                c_date = st.date_input("Issue Date", datetime.today())
-                if not df_raw.empty:
-                    mat_list = df_raw[df_raw["Type"] == "PURCHASE"]["Material ID"].unique().tolist()
